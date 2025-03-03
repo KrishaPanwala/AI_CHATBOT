@@ -10,6 +10,7 @@ import speech_recognition as sr
 import re
 import numpy as np
 import queue
+import sounddevice as sd
 from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, WebRtcMode
 
 api_key = st.secrets["OPENAI_API_KEY"]
@@ -71,27 +72,20 @@ def document_summarization_interface():
         st.write("Summary:", summarize_text(read_document(uploaded_file)))
 
 def transcribe_audio_from_mic():
-    def callback(indata, frames, time, status):
-        audio_data = np.frombuffer(indata, dtype=np.float32)
-
+    # Callback function for sounddevice input
     with sr.Microphone() as source:
         st.write("Adjusting for ambient noise... please wait")
         recognizer.adjust_for_ambient_noise(source)
         st.write("Listening...")
 
-        # Capture audio using sounddevice
-        audio_data = sd.rec(int(5 * 16000), samplerate=16000, channels=1)
-        sd.wait()
-
-        # Convert to SpeechRecognition audio format and transcribe
-        audio_data_bytes = (audio_data * 32767).astype(np.int16).tobytes()
-        audio_source = sr.AudioData(audio_data_bytes, 16000, 2)
+        # Capture audio from the microphone using sounddevice
+        audio_data = recognizer.listen(source)
 
         st.write("Processing audio...")
-        
+
         # Transcribe the speech to text using Google Speech Recognition
         try:
-            return recognizer.recognize_google(audio_source)
+            return recognizer.recognize_google(audio_data)
         except sr.UnknownValueError:
             return "Sorry, I could not understand the audio."
         except sr.RequestError as e:
