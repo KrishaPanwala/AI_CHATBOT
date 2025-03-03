@@ -8,4 +8,3 @@ speechrecognition
 espeakng
 streamlit-webrtc
 pyarrow
-streamlit
