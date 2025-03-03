@@ -113,13 +113,16 @@ def voice_assistant_interface():
 
     # Check if the streamer is playing and process audio
     if webrtc_ctx.state.playing:
-        st.write("Listening...")
+        st.write("Listening...")  # This should display once the audio stream starts
         
         # Access audio processor
         audio_processor = webrtc_ctx.audio_processor
         if audio_processor:
+            st.write("Audio processor is active")  # To check if audio processor is created
+
             while not audio_processor.audio_queue.empty():
                 try:
+                    st.write("Processing audio...")  # Add a log to check if audio is being processed
                     # Capture and transcribe audio data
                     audio_data = audio_processor.audio_queue.get()
                     audio = sr.AudioData(audio_data.tobytes(), 16000, 2)
@@ -136,6 +139,10 @@ def voice_assistant_interface():
                     st.write("Sorry, I couldn't understand the audio.")
                 except sr.RequestError as e:
                     st.write(f"Error with recognition service: {e}")
+        else:
+            st.write("Audio processor is not active.")
+    else:
+        st.write("WebRTC is not streaming audio.")
 
 # Streamlit sidebar navigation
 st.sidebar.title("Navigation")
