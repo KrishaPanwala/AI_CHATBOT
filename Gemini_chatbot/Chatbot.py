@@ -71,20 +71,31 @@ def document_summarization_interface():
         st.write("Summary:", summarize_text(read_document(uploaded_file)))
 
 def transcribe_audio_from_mic():
-    try:
-        with sr.Microphone() as source:
-            st.write("Adjusting for ambient noise... please wait")
-            recognizer.adjust_for_ambient_noise(source)
-            st.write("Listening...")
-            audio_data = recognizer.listen(source)
-            st.write("Processing audio...")
-            
-            # Transcribe the speech to text using Google Speech Recognition
-            return recognizer.recognize_google(audio_data)
-    except sr.UnknownValueError:
-        return "Sorry, I could not understand the audio."
-    except sr.RequestError as e:
-        return f"Error with the recognition service: {e}"
+    def callback(indata, frames, time, status):
+        audio_data = np.frombuffer(indata, dtype=np.float32)
+
+    with sr.Microphone() as source:
+        st.write("Adjusting for ambient noise... please wait")
+        recognizer.adjust_for_ambient_noise(source)
+        st.write("Listening...")
+
+        # Capture audio using sounddevice
+        audio_data = sd.rec(int(5 * 16000), samplerate=16000, channels=1)
+        sd.wait()
+
+        # Convert to SpeechRecognition audio format and transcribe
+        audio_data_bytes = (audio_data * 32767).astype(np.int16).tobytes()
+        audio_source = sr.AudioData(audio_data_bytes, 16000, 2)
+
+        st.write("Processing audio...")
+        
+        # Transcribe the speech to text using Google Speech Recognition
+        try:
+            return recognizer.recognize_google(audio_source)
+        except sr.UnknownValueError:
+            return "Sorry, I could not understand the audio."
+        except sr.RequestError as e:
+            return f"Error with the recognition service: {e}"
 
 def voice_assistant_interface():
     st.title("Voice Assistant Chatbot")
@@ -98,7 +109,6 @@ def voice_assistant_interface():
         if transcription:
             response = get_gemini_response(transcription)
             st.write(f"Chatbot: {response}")
-
 
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Choose a page", ["Chatbot", "Image Analysis", "Document Summarization", "Voice Assistant"])
