@@ -70,64 +70,34 @@ def document_summarization_interface():
     if uploaded_file and st.button("Summarize"):
         st.write("Summary:", summarize_text(read_document(uploaded_file)))
 
-class AudioProcessor(AudioProcessorBase):
-    def __init__(self):
-        super().__init__()
-        self.recognizer = sr.Recognizer()
-        self.audio_queue = queue.Queue()  # Queue to store audio frames
-        self.transcription = None  # Variable to hold the transcription result
-
-    def recv(self, frame):
-        # Convert the audio frame into numpy array (int16 format)
-        audio_data = frame.to_ndarray().flatten().astype(np.int16)
-        # Add the audio data to the queue
-        self.audio_queue.put(audio_data)
-
-        # Process the audio when enough frames have been collected
-        if self.audio_queue.qsize() > 50:  # Adjust the threshold for better performance
-            try:
-                # Combine audio frames into a single byte stream
-                audio_bytes = np.concatenate(list(self.audio_queue.queue)).tobytes()
-
-                # Create an AudioData object with proper sample rate (16000) and width (2 bytes for int16)
-                audio_source = sr.AudioData(audio_bytes, sample_rate=16000, sample_width=2)
-                
-                # Perform speech recognition using Google's API
-                self.transcription = self.recognizer.recognize_google(audio_source)
-                
-                # Clear the queue after recognition
-                with self.audio_queue.mutex:
-                    self.audio_queue.queue.clear()
-
-            except sr.UnknownValueError:
-                self.transcription = "Could not understand audio"
-            except sr.RequestError as e:
-                self.transcription = f"Recognition error: {e}"
-
-        return frame
+def transcribe_audio_from_mic():
+    try:
+        with sr.Microphone() as source:
+            st.write("Adjusting for ambient noise... please wait")
+            recognizer.adjust_for_ambient_noise(source)
+            st.write("Listening...")
+            audio_data = recognizer.listen(source)
+            st.write("Processing audio...")
+            
+            # Transcribe the speech to text using Google Speech Recognition
+            return recognizer.recognize_google(audio_data)
+    except sr.UnknownValueError:
+        return "Sorry, I could not understand the audio."
+    except sr.RequestError as e:
+        return f"Error with the recognition service: {e}"
 
 def voice_assistant_interface():
     st.title("Voice Assistant Chatbot")
-
-    # Initialize WebRTC streamer for capturing the user's voice
-    webrtc_ctx = webrtc_streamer(
-        key="speech-to-text",
-        mode=WebRtcMode.SENDRECV,
-        audio_processor_factory=AudioProcessor,  # Use our custom AudioProcessor class
-        media_stream_constraints={"audio": True},  # Only capture audio, no video
-        async_processing=True
-    )
-
-    # Check if WebRTC is active and transcription is available
-    if webrtc_ctx.state.playing and webrtc_ctx.audio_processor and webrtc_ctx.audio_processor.transcription:
-        # Display the recognized user speech
-        st.write(f"You: {webrtc_ctx.audio_processor.transcription}")
+    
+    # Button to start listening from the microphone
+    if st.button("Start Talking"):
+        transcription = transcribe_audio_from_mic()
+        st.write(f"You: {transcription}")
         
-        # Get the chatbot response using the transcribed text
-        response = get_gemini_response(webrtc_ctx.audio_processor.transcription)
-        
-        # Display the chatbot response
-        st.write(f"Chatbot: {response}")
+        # Get chatbot response based on the transcription
+        if transcription:
+            response = get_gemini_response(transcription)
+            st.write(f"Chatbot: {response}")
 
 
 st.sidebar.title("Navigation")
