@@ -73,24 +73,47 @@ def document_summarization_interface():
 class AudioProcessor(AudioProcessorBase):
     def __init__(self):
         self.recognizer = sr.Recognizer()
-        self.audio_queue, self.transcription = queue.Queue(), None
+        self.audio_queue = queue.Queue()  # Queue to store audio frames
+        self.transcription = None  # To store the transcription
+
     def recv(self, frame):
-        try:
-            self.audio_queue.put(np.frombuffer(frame.to_ndarray().flatten(), dtype=np.int16))
-            audio_source = sr.AudioData(b"".join([np.int16(a).tobytes() for a in list(self.audio_queue.queue)]), sample_rate=16000, sample_width=2)
-            self.transcription = self.recognizer.recognize_google(audio_source)
-        except sr.UnknownValueError:
-            self.transcription = "Could not understand audio"
-        except sr.RequestError as e:
-            self.transcription = f"Error: {e}"
+        # Collect audio frames and convert them into recognizable format
+        audio_data = np.frombuffer(frame.to_ndarray(), dtype=np.int16).tobytes()
+        self.audio_queue.put(audio_data)
+
+        # Perform speech recognition on the collected frames
+        if self.audio_queue.qsize() > 20:  # Start recognizing after receiving enough frames
+            try:
+                audio_bytes = b"".join(list(self.audio_queue.queue))
+                audio_source = sr.AudioData(audio_bytes, sample_rate=16000, sample_width=2)
+                self.transcription = self.recognizer.recognize_google(audio_source)
+            except sr.UnknownValueError:
+                self.transcription = "Could not understand audio"
+            except sr.RequestError as e:
+                self.transcription = f"Error: {e}"
+
         return frame
 
 def voice_assistant_interface():
     st.title("Voice Assistant Chatbot")
-    webrtc_ctx = webrtc_streamer(key="speech-to-text", mode=WebRtcMode.SENDRECV, audio_processor_factory=AudioProcessor, media_stream_constraints={"audio": True}, async_processing=True)
+    
+    # Set up WebRTC streamer for capturing audio
+    webrtc_ctx = webrtc_streamer(
+        key="speech-to-text",
+        mode=WebRtcMode.SENDRECV,
+        audio_processor_factory=AudioProcessor,  # Use custom audio processor
+        media_stream_constraints={"audio": True},  # Enable audio stream
+        async_processing=True
+    )
+    
+    # If audio streaming is active and transcription is available
     if webrtc_ctx.state.playing and webrtc_ctx.audio_processor.transcription:
+        st.write(f"You: {webrtc_ctx.audio_processor.transcription}")
+        
+        # Get the chatbot response based on the recognized transcription
         response = get_gemini_response(webrtc_ctx.audio_processor.transcription)
         st.write(f"Chatbot: {response}")
+
 
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Choose a page", ["Chatbot", "Image Analysis", "Document Summarization", "Voice Assistant"])
