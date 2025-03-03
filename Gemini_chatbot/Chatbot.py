@@ -88,61 +88,61 @@ def document_summarization_interface():
         st.write("Summary:", summary)
 
 # Define a class to process audio with streamlit-webrtc
-class AudioProcessor(AudioProcessorBase):
-    def __init__(self):
-        self.recognizer = sr.Recognizer()
-        self.audio_queue = queue.Queue()
+# class AudioProcessor(AudioProcessorBase):
+#     def __init__(self):
+#         self.recognizer = sr.Recognizer()
+#         self.audio_queue = queue.Queue()
 
-    def recv(self, frame):
-        # Convert WebRTC audio to NumPy array
-        audio_data = np.frombuffer(frame.to_ndarray(), np.float32)
-        self.audio_queue.put(audio_data)
-        return frame
+#     def recv(self, frame):
+#         # Convert WebRTC audio to NumPy array
+#         audio_data = np.frombuffer(frame.to_ndarray(), np.float32)
+#         self.audio_queue.put(audio_data)
+#         return frame
 
 # Voice assistant interface using real-time audio streaming
-def voice_assistant_interface():
-    st.title("Voice Assistant Chatbot")
+# def voice_assistant_interface():
+#     st.title("Voice Assistant Chatbot")
     
-    # WebRTC streamer for capturing real-time audio
-    webrtc_ctx = webrtc_streamer(
-        key="voice-assistant",
-        mode=WebRtcMode.SENDRECV,
-        audio_processor_factory=AudioProcessor,
-        media_stream_constraints={"audio": True, "video": False},
-    )
+#     # WebRTC streamer for capturing real-time audio
+#     webrtc_ctx = webrtc_streamer(
+#         key="voice-assistant",
+#         mode=WebRtcMode.SENDRECV,
+#         audio_processor_factory=AudioProcessor,
+#         media_stream_constraints={"audio": True, "video": False},
+#     )
 
-    # Check if the streamer is playing and process audio
-    if webrtc_ctx.state.playing:
-        st.write("Listening...")  # This should display once the audio stream starts
+#     # Check if the streamer is playing and process audio
+#     if webrtc_ctx.state.playing:
+#         st.write("Listening...")  # This should display once the audio stream starts
         
-        # Access audio processor
-        audio_processor = webrtc_ctx.audio_processor
-        if audio_processor:
-            st.write("Audio processor is active")  # To check if audio processor is created
+#         # Access audio processor
+#         audio_processor = webrtc_ctx.audio_processor
+#         if audio_processor:
+#             st.write("Audio processor is active")  # To check if audio processor is created
 
-            while not audio_processor.audio_queue.empty():
-                try:
-                    st.write("Processing audio...")  # Add a log to check if audio is being processed
-                    # Capture and transcribe audio data
-                    audio_data = audio_processor.audio_queue.get()
-                    audio = sr.AudioData(audio_data.tobytes(), 16000, 2)
-                    transcription = recognizer.recognize_google(audio)
+#             while not audio_processor.audio_queue.empty():
+#                 try:
+#                     st.write("Processing audio...")  # Add a log to check if audio is being processed
+#                     # Capture and transcribe audio data
+#                     audio_data = audio_processor.audio_queue.get()
+#                     audio = sr.AudioData(audio_data.tobytes(), 16000, 2)
+#                     transcription = recognizer.recognize_google(audio)
 
-                    # Display transcription result
-                    st.write(f"You: {transcription}")
+#                     # Display transcription result
+#                     st.write(f"You: {transcription}")
 
-                    # Generate response from Gemini AI
-                    response = get_gemini_response(transcription)
-                    st.write(f"Chatbot: {response}")
+#                     # Generate response from Gemini AI
+#                     response = get_gemini_response(transcription)
+#                     st.write(f"Chatbot: {response}")
 
-                except sr.UnknownValueError:
-                    st.write("Sorry, I couldn't understand the audio.")
-                except sr.RequestError as e:
-                    st.write(f"Error with recognition service: {e}")
-        else:
-            st.write("Audio processor is not active.")
-    else:
-        st.write("WebRTC is not streaming audio.")
+#                 except sr.UnknownValueError:
+#                     st.write("Sorry, I couldn't understand the audio.")
+#                 except sr.RequestError as e:
+#                     st.write(f"Error with recognition service: {e}")
+#         else:
+#             st.write("Audio processor is not active.")
+#     else:
+#         st.write("WebRTC is not streaming audio.")
 
 # Streamlit sidebar navigation
 st.sidebar.title("Navigation")
