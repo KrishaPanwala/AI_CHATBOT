@@ -187,12 +187,27 @@ class AudioProcessor(AudioProcessorBase):
     def __init__(self):
         self.recognizer = sr.Recognizer()
         self.audio_queue = queue.Queue()
+        self.transcription = None  # Store transcribed text
 
     def recv(self, frame):
-        # Convert the audio frame to bytes for speech recognition
+        # Convert audio frame to bytes for recognition
         audio_data = np.frombuffer(frame.to_ndarray().flatten(), dtype=np.int16)
         self.audio_queue.put(audio_data)
+
+        # Process audio for speech recognition
+        try:
+            audio_bytes = b"".join([np.int16(a).tobytes() for a in list(self.audio_queue.queue)])
+            audio_source = sr.AudioData(audio_bytes, sample_rate=16000, sample_width=2)
+
+            self.transcription = self.recognizer.recognize_google(audio_source)
+            print("Recognized Speech:", self.transcription)  # Debugging
+        except sr.UnknownValueError:
+            self.transcription = "Could not understand audio"
+        except sr.RequestError as e:
+            self.transcription = f"Error with speech recognition: {e}"
+
         return frame
+
 
 def voice_assistant_interface():
     st.title("Real-time Voice Assistant Chatbot")
