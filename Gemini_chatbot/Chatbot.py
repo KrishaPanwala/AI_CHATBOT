@@ -72,46 +72,61 @@ def document_summarization_interface():
 
 class AudioProcessor(AudioProcessorBase):
     def __init__(self):
+        super().__init__()
         self.recognizer = sr.Recognizer()
         self.audio_queue = queue.Queue()  # Queue to store audio frames
-        self.transcription = None  # To store the transcription
+        self.transcription = None  # Variable to hold the transcription result
 
     def recv(self, frame):
-        # Collect audio frames and convert them into recognizable format
-        audio_data = np.frombuffer(frame.to_ndarray(), dtype=np.int16).tobytes()
+        # Convert the audio frame into numpy array (int16 format)
+        audio_data = frame.to_ndarray().flatten().astype(np.int16)
+        # Add the audio data to the queue
         self.audio_queue.put(audio_data)
 
-        # Perform speech recognition on the collected frames
-        if self.audio_queue.qsize() > 20:  # Start recognizing after receiving enough frames
+        # Process the audio when enough frames have been collected
+        if self.audio_queue.qsize() > 50:  # Adjust the threshold for better performance
             try:
-                audio_bytes = b"".join(list(self.audio_queue.queue))
+                # Combine audio frames into a single byte stream
+                audio_bytes = np.concatenate(list(self.audio_queue.queue)).tobytes()
+
+                # Create an AudioData object with proper sample rate (16000) and width (2 bytes for int16)
                 audio_source = sr.AudioData(audio_bytes, sample_rate=16000, sample_width=2)
+                
+                # Perform speech recognition using Google's API
                 self.transcription = self.recognizer.recognize_google(audio_source)
+                
+                # Clear the queue after recognition
+                with self.audio_queue.mutex:
+                    self.audio_queue.queue.clear()
+
             except sr.UnknownValueError:
                 self.transcription = "Could not understand audio"
             except sr.RequestError as e:
-                self.transcription = f"Error: {e}"
+                self.transcription = f"Recognition error: {e}"
 
         return frame
 
 def voice_assistant_interface():
     st.title("Voice Assistant Chatbot")
-    
-    # Set up WebRTC streamer for capturing audio
+
+    # Initialize WebRTC streamer for capturing the user's voice
     webrtc_ctx = webrtc_streamer(
         key="speech-to-text",
         mode=WebRtcMode.SENDRECV,
-        audio_processor_factory=AudioProcessor,  # Use custom audio processor
-        media_stream_constraints={"audio": True},  # Enable audio stream
+        audio_processor_factory=AudioProcessor,  # Use our custom AudioProcessor class
+        media_stream_constraints={"audio": True},  # Only capture audio, no video
         async_processing=True
     )
-    
-    # If audio streaming is active and transcription is available
-    if webrtc_ctx.state.playing and webrtc_ctx.audio_processor.transcription:
+
+    # Check if WebRTC is active and transcription is available
+    if webrtc_ctx.state.playing and webrtc_ctx.audio_processor and webrtc_ctx.audio_processor.transcription:
+        # Display the recognized user speech
         st.write(f"You: {webrtc_ctx.audio_processor.transcription}")
         
-        # Get the chatbot response based on the recognized transcription
+        # Get the chatbot response using the transcribed text
         response = get_gemini_response(webrtc_ctx.audio_processor.transcription)
+        
+        # Display the chatbot response
         st.write(f"Chatbot: {response}")
 
 
