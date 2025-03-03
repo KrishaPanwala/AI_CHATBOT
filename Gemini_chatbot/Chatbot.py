@@ -146,7 +146,7 @@ def document_summarization_interface():
 
 # Streamlit sidebar navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Choose a page", ["Chatbot", "Image Analysis", "Document Summarization", "Voice Assistant"])
+page = st.sidebar.radio("Choose a page", ["Chatbot", "Image Analysis", "Document Summarization"])
 
 if page == "Chatbot":
     chat_interface()
@@ -154,5 +154,5 @@ elif page == "Image Analysis":
     image_analysis_interface()
 elif page == "Document Summarization":
     document_summarization_interface()
-elif page == "Voice Assistant":
-    voice_assistant_interface()
+# elif page == "Voice Assistant":
+#     voice_assistant_interface()
