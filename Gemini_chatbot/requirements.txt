@@ -1,0 +1,10 @@
+streamlit
+google-generativeai
+pillow
+pypdf2
+python-docx
+speechrecognition
+espeakng
+streamlit-webrtc
+pyarrow
+streamlit
