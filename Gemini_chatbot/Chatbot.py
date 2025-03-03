@@ -212,7 +212,7 @@ class AudioProcessor(AudioProcessorBase):
 def voice_assistant_interface():
     st.title("Real-time Voice Assistant Chatbot")
     st.write("Speak into the microphone to interact with the chatbot.")
-    
+
     # Start the WebRTC audio streaming
     webrtc_ctx = webrtc_streamer(
         key="speech-to-text",
@@ -221,16 +221,20 @@ def voice_assistant_interface():
         media_stream_constraints={"audio": True},
         async_processing=True,
     )
-    
+
     if webrtc_ctx.state.playing:
         processor = webrtc_ctx.audio_processor
         
-        if processor and processor.transcription:
-            st.write(f"You said: {processor.transcription}")
-            
-            # Get response from Gemini
-            response = get_gemini_response(processor.transcription)
-            st.write(f"Chatbot: {response}")
+        if processor and processor.transcription is not None:
+            st.write(f"You said: {processor.transcription}")  # Debugging: Display transcription
+
+            # Ensure speech is converted to text before sending to chatbot
+            if processor.transcription.strip():  # Check if non-empty text
+                response = get_gemini_response(processor.transcription)  
+                st.write(f"Chatbot: {response}")
+            else:
+                st.write("No speech detected. Please try again.")
+
 
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Choose a page", ["Chatbot", "Image Analysis", "Document Summarization", "Voice Assistant"])
